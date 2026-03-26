@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Konrad — Daily Tool</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Inter, -apple-system, sans-serif; background: #f8f8f8; color: #1a1a1a; }
+
+.nav { background: white; border-bottom: 0.5px solid #e0e0e0; padding: 0 2rem; display: flex; align-items: center; position: sticky; top: 0; z-index: 50; }
+.nav-logo { font-size: 15px; font-weight: 600; color: #1a1a1a; padding: 1rem 1.5rem 1rem 0; border-right: 0.5px solid #e0e0e0; margin-right: 1rem; }
+.nav-tab { padding: 1rem 1.25rem; font-size: 13px; color: #888; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; white-space: nowrap; }
+.nav-tab:hover { color: #1a1a1a; }
+.nav-tab.active { color: #4a9e6b; border-bottom-color: #4a9e6b; font-weight: 500; }
+.nav-right { margin-left: auto; font-size: 12px; color: #888; padding: 1rem 0; }
+
+.page { display: none; padding: 2rem; max-width: 1100px; margin: 0 auto; }
+.page.active { display: block; }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
+.stat { background: white; border-radius: 10px; padding: 14px; text-align: center; border: 0.5px solid #e0e0e0; cursor: default; }
+.stat-num { font-size: 24px; font-weight: 500; }
+.stat-label { font-size: 11px; color: #888; margin-top: 3px; }
+
+.motivator { background: #f0f7f3; border: 0.5px solid #b8ddc8; border-radius: 10px; padding: 12px 16px; margin-bottom: 1.5rem; font-size: 13px; color: #2d6a4a; text-align: center; font-style: italic; }
+.progress-label { font-size: 12px; color: #888; margin-bottom: 6px; }
+.progress-bar-wrap { background: #e8e8e8; border-radius: 20px; height: 8px; margin-bottom: 1.5rem; overflow: hidden; }
+.progress-bar { height: 100%; background: #4a9e6b; border-radius: 20px; transition: width 0.4s ease; }
+
+.block { background: white; border: 0.5px solid #e0e0e0; border-radius: 12px; margin-bottom: 12px; overflow: hidden; }
+.block-header { display: flex; align-items: center; gap: 12px; padding: 14px 16px; cursor: pointer; user-select: none; }
+.block-header:hover { background: #fafafa; }
+.block-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+.block-info { flex: 1; }
+.block-title { font-size: 14px; font-weight: 500; }
+.block-time { font-size: 11px; color: #888; margin-top: 2px; }
+.block-prog { font-size: 12px; color: #888; white-space: nowrap; }
+.block-chev { font-size: 11px; color: #888; transition: transform 0.2s; }
+.block-chev.open { transform: rotate(180deg); }
+.block-body { padding: 0 16px 16px; display: none; }
+.block-body.open { display: block; }
+
+.call-counter { display: flex; align-items: center; gap: 12px; background: #f5f5f5; border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; }
+.call-counter-info { flex: 1; }
+.call-counter-label { font-size: 13px; font-weight: 500; }
+.call-target { font-size: 11px; color: #888; margin-top: 2px; }
+.call-btns { display: flex; align-items: center; gap: 8px; }
+.call-btn { width: 32px; height: 32px; border-radius: 8px; border: 0.5px solid #d0d0d0; background: white; color: #1a1a1a; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; }
+.call-btn:hover { background: #f0f0f0; }
+.call-num { font-size: 20px; font-weight: 500; min-width: 32px; text-align: center; }
+.call-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; margin-bottom: 14px; }
+.call-dot { width: 100%; aspect-ratio: 1; border-radius: 50%; background: #ebebeb; border: 0.5px solid #d8d8d8; cursor: pointer; transition: all 0.15s; }
+.call-dot.filled { background: #4a9e6b; border-color: #4a9e6b; }
+.call-dot:hover { transform: scale(1.15); }
+
+.tasks-label { font-size: 12px; color: #888; margin-bottom: 8px; }
+.task { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 0.5px solid #f0f0f0; }
+.task:last-child { border-bottom: none; }
+.task-check { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid #d0d0d0; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; }
+.task-check.done { background: #4a9e6b; border-color: #4a9e6b; }
+.task-check.done::after { content: '✓'; color: white; font-size: 12px; font-weight: 600; }
+.task-label { font-size: 13px; flex: 1; }
+.task-label.done { color: #aaa; text-decoration: line-through; }
+.note-input { width: 100%; padding: 10px 12px; border: 0.5px solid #e0e0e0; border-radius: 8px; font-size: 12px; background: white; color: #1a1a1a; font-family: inherit; resize: none; margin-top: 12px; outline: none; }
+.note-input:focus { border-color: #4a9e6b; }
+.completion-msg { text-align: center; padding: 1rem; font-size: 15px; color: #4a9e6b; font-weight: 500; display: none; background: #f0f7f3; border-radius: 10px; margin-bottom: 1rem; }
+.reset-btn { width: 100%; padding: 11px; background: none; border: 0.5px solid #e0e0e0; border-radius: 8px; font-size: 13px; color: #888; cursor: pointer; margin-top: 0.5rem; font-family: inherit; }
+.reset-btn:hover { background: #f5f5f5; }
+
+/* CRM */
+.crm-toolbar { display: flex; gap: 10px; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
+.crm-toolbar input, .crm-toolbar select { padding: 8px 12px; border: 0.5px solid #d0d0d0; border-radius: 8px; font-size: 13px; background: white; color: #1a1a1a; outline: none; font-family: inherit; }
+.crm-toolbar input { flex: 1; min-width: 180px; }
+.crm-toolbar input:focus, .crm-toolbar select:focus { border-color: #4a9e6b; }
+
+.quick-add { display: flex; gap: 8px; margin-bottom: 1rem; }
+.quick-add input { flex: 1; padding: 9px 14px; border: 0.5px solid #d0d0d0; border-radius: 8px; font-size: 13px; background: white; color: #1a1a1a; outline: none; font-family: inherit; }
+.quick-add input:focus { border-color: #4a9e6b; }
+.quick-add button { padding: 9px 18px; background: #4a9e6b; color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+.quick-add button:hover { background: #3d8a5c; }
+.quick-add select { padding: 9px 12px; border: 0.5px solid #d0d0d0; border-radius: 8px; font-size: 13px; background: white; color: #1a1a1a; outline: none; font-family: inherit; }
+
+.filter-row { display: flex; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
+.filter-btn { padding: 5px 14px; border-radius: 20px; border: 0.5px solid #d0d0d0; background: white; color: #888; font-size: 12px; cursor: pointer; }
+.filter-btn.active { background: #4a9e6b; color: white; border-color: #4a9e6b; }
+.sort-label { font-size: 12px; color: #888; margin-left: auto; }
+.sort-select { padding: 5px 10px; border: 0.5px solid #d0d0d0; border-radius: 8px; font-size: 12px; background: white; color: #1a1a1a; outline: none; font-family: inherit; }
+
+.table-wrap { background: white; border-radius: 12px; border: 0.5px solid #e0e0e0; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 800px; }
+th { text-align: left; padding: 10px 14px; color: #888; font-weight: 500; border-bottom: 0.5px solid #e8e8e8; font-size: 12px; background: #fafafa; white-space: nowrap; }
+td { padding: 10px 14px; border-bottom: 0.5px solid #f0f0f0; color: #1a1a1a; vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #fafafa; }
+tr.urgent-row td { background: #fffbf0; }
+
+.badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; white-space: nowrap; }
+.badge-new        { background: #e8f0fe; color: #1a4aad; }
+.badge-callback  { background: #fff3cd; color: #856404; }
+.badge-sms       { background: #fde8d8; color: #8b3a0f; }
+.badge-smssent   { background: #e2d9f3; color: #4a235a; }
+.badge-waiting   { background: #d0e8ff; color: #0a3d6b; }
+.badge-interested{ background: #d4edda; color: #155724; }
+
+.calls-pill { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; background: #f0f0f0; color: #555; }
+.calls-pill.one { background: #fff3cd; color: #856404; }
+.calls-pill.two { background: #f8d7da; color: #721c24; }
+
+.call-tick { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid #d0d0d0; background: white; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; }
+.call-tick:hover { border-color: #4a9e6b; }
+
+.action-cell { display: flex; align-items: center; gap: 8px; }
+.tick-btn { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid #d0d0d0; background: white; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; }
+.tick-btn.ticked { background: #4a9e6b; border-color: #4a9e6b; }
+.tick-btn.ticked::after { content: '✓'; color: white; font-size: 11px; font-weight: 600; }
+.action-text { font-size: 12px; }
+.action-text.ticked { text-decoration: line-through; color: #aaa; }
+.action-date { font-size: 11px; color: #888; white-space: nowrap; }
+.action-date.urgent { color: #dc3545; font-weight: 500; }
+.todo-cell { font-size: 12px; max-width: 200px; }
+.todo-date { font-size: 11px; color: #888; }
+.todo-date.urgent { color: #dc3545; font-weight: 500; }
+
+.btn-icon { background: none; border: none; cursor: pointer; padding: 4px 6px; border-radius: 6px; font-size: 13px; color: #888; }
+.btn-icon:hover { background: #f0f0f0; }
+.btn-del:hover { background: #fff0f0; color: #dc3545; }
+
+.weekly-summary { background: white; border-radius: 12px; border: 0.5px solid #e0e0e0; padding: 1.25rem 1.5rem; margin-top: 1.5rem; }
+.weekly-summary h3 { font-size: 14px; font-weight: 500; margin-bottom: 1rem; color: #1a1a1a; }
+.weekly-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+.weekly-stat { text-align: center; }
+.weekly-num { font-size: 20px; font-weight: 500; }
+.weekly-label { font-size: 11px; color: #888; margin-top: 2px; }
+.conversion-bar { margin-top: 1rem; }
+.conv-label { font-size: 12px; color: #888; margin-bottom: 4px; display: flex; justify-content: space-between; }
+.conv-track { background: #e8e8e8; border-radius: 20px; height: 6px; overflow: hidden; }
+.conv-fill { height: 100%; background: #4a9e6b; border-radius: 20px; transition: width 0.4s; }
+
+.sms-box { background: #f0f7f3; border: 0.5px solid #b8ddc8; border-radius: 10px; padding: 14px 16px; margin-top: 1.5rem; font-size: 12px; color: #2d6a4a; line-height: 1.6; }
+.sms-box strong { display: block; margin-bottom: 6px; font-size: 13px; }
+
+/* Modals */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: white; border-radius: 14px; padding: 1.75rem; width: 90%; max-width: 460px; border: 0.5px solid #e0e0e0; max-height: 90vh; overflow-y: auto; }
+.modal h3 { font-size: 16px; font-weight: 500; margin-bottom: 0.25rem; }
+.modal .subtitle { font-size: 12px; color: #888; margin-bottom: 1.25rem; }
+.modal p { font-size: 13px; color: #555; margin-bottom: 1rem; }
+.outcome-btns { display: flex; flex-direction: column; gap: 10px; margin-bottom: 1rem; }
+.outcome-btn { padding: 12px 16px; border-radius: 10px; border: 0.5px solid #d0d0d0; background: white; font-size: 13px; cursor: pointer; text-align: left; font-family: inherit; transition: all 0.15s; }
+.outcome-btn:hover { border-color: #4a9e6b; background: #f0f7f3; }
+.form-group { margin-bottom: 12px; }
+.form-group label { display: block; font-size: 12px; color: #888; margin-bottom: 4px; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px 12px; border: 0.5px solid #d0d0d0; border-radius: 8px; font-size: 13px; color: #1a1a1a; outline: none; font-family: inherit; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #4a9e6b; }
+.form-group textarea { resize: vertical; min-height: 70px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 1rem; }
+.modal-btns button { padding: 9px 20px; border-radius: 8px; font-size: 13px; cursor: pointer; font-family: inherit; }
+.btn-cancel { background: none; border: 0.5px solid #d0d0d0; color: #888; }
+.btn-save { background: #4a9e6b; color: white; border: none; font-weight: 500; }
+.btn-save:hover { background: #3d8a5c; }
+.step { display: none; }
+.step.active { display: block; }
+.empty { text-align: center; padding: 3rem; color: #aaa; font-size: 13px; }
+
+@media (max-width: 600px) { .page { padding: 1rem; } .nav { padding: 0 1rem; } }
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <div class="nav-logo">Konrad</div>
+  <div class="nav-tab active" onclick="showPage(event,'tagesplan')">📅 Tagesplan</div>
+  <div class="nav-tab" onclick="showPage(event,'crm')">📞 CRM</div>
+  <div class="nav-right" id="navDate"></div>
+</div>
+
+<!-- TAGESPLAN -->
+<div class="page active" id="page-tagesplan">
+  <div class="motivator" id="motivator"></div>
+  <div class="stats">
+    <div class="stat"><div class="stat-num" id="statAM">0</div><div class="stat-label">Anrufe VM</div></div>
+    <div class="stat"><div class="stat-num" id="statPM">0</div><div class="stat-label">Anrufe NM</div></div>
+    <div class="stat"><div class="stat-num" id="statTotal">0</div><div class="stat-label">Gesamt heute</div></div>
+    <div class="stat"><div class="stat-num" id="statPct">0%</div><div class="stat-label">Erledigt</div></div>
+  </div>
+  <div class="progress-label" id="progressLabel">0% des Tages erledigt</div>
+  <div class="progress-bar-wrap"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
+
+  <div class="block">
+    <div class="block-header" onclick="toggleBlock(0)">
+      <div class="block-icon" style="background:#e8f5ee">📞</div>
+      <div class="block-info"><div class="block-title">Block 1 — Cold Calling</div><div class="block-time">10:00 – 12:00</div></div>
+      <div class="block-prog" id="bp0">0/20 Anrufe</div>
+      <div class="block-chev" id="bc0">▼</div>
+    </div>
+    <div class="block-body open" id="bb0">
+      <div class="call-counter">
+        <div class="call-counter-info"><div class="call-counter-label">Anrufe Vormittag</div><div class="call-target">Ziel: 20 — wird automatisch vom CRM gezählt</div></div>
+        <div class="call-btns">
+          <button class="call-btn" onclick="changeCount('am',-1)">−</button>
+          <div class="call-num" id="amCount">0</div>
+          <button class="call-btn" onclick="changeCount('am',1)">+</button>
+        </div>
+      </div>
+      <div class="call-grid" id="amGrid"></div>
+      <div class="tasks-label">Aufgaben:</div>
+      <div id="tasks0"></div>
+      <textarea class="note-input" rows="2" placeholder="Notizen zum Vormittag..." id="note0" oninput="saveNotes()"></textarea>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="block-header" onclick="toggleBlock(1)">
+      <div class="block-icon" style="background:#e8f0fe">🔍</div>
+      <div class="block-info"><div class="block-title">Pause & Lead Recherche</div><div class="block-time">12:00 – 14:00</div></div>
+      <div class="block-prog" id="bp1">0/4</div>
+      <div class="block-chev" id="bc1">▼</div>
+    </div>
+    <div class="block-body" id="bb1">
+      <div id="tasks1"></div>
+      <textarea class="note-input" rows="2" placeholder="Neue Leads gefunden..." id="note1" oninput="saveNotes()"></textarea>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="block-header" onclick="toggleBlock(2)">
+      <div class="block-icon" style="background:#fef3e8">📞</div>
+      <div class="block-info"><div class="block-title">Block 2 — Cold Calling</div><div class="block-time">14:00 – 16:00</div></div>
+      <div class="block-prog" id="bp2">0/20 Anrufe</div>
+      <div class="block-chev" id="bc2">▼</div>
+    </div>
+    <div class="block-body" id="bb2">
+      <div class="call-counter">
+        <div class="call-counter-info"><div class="call-counter-label">Anrufe Nachmittag</div><div class="call-target">Ziel: 20 — wird automatisch vom CRM gezählt</div></div>
+        <div class="call-btns">
+          <button class="call-btn" onclick="changeCount('pm',-1)">−</button>
+          <div class="call-num" id="pmCount">0</div>
+          <button class="call-btn" onclick="changeCount('pm',1)">+</button>
+        </div>
+      </div>
+      <div class="call-grid" id="pmGrid"></div>
+      <div class="tasks-label">Aufgaben:</div>
+      <div id="tasks2"></div>
+      <textarea class="note-input" rows="2" placeholder="Notizen zum Nachmittag..." id="note2" oninput="saveNotes()"></textarea>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="block-header" onclick="toggleBlock(3)">
+      <div class="block-icon" style="background:#f3e8fe">✅</div>
+      <div class="block-info"><div class="block-title">Tagesabschluss</div><div class="block-time">16:00 – 17:00</div></div>
+      <div class="block-prog" id="bp3">0/4</div>
+      <div class="block-chev" id="bc3">▼</div>
+    </div>
+    <div class="block-body" id="bb3">
+      <div id="tasks3"></div>
+      <textarea class="note-input" rows="2" placeholder="Wie war der Tag? Was lief gut?" id="note3" oninput="saveNotes()"></textarea>
+    </div>
+  </div>
+
+  <div class="completion-msg" id="completionMsg">Perfekter Tag! Alle Aufgaben erledigt 🎉</div>
+  <button class="reset-btn" onclick="resetDay()">Tag zurücksetzen</button>
+</div>
+
+<!-- CRM -->
+<div class="page" id="page-crm">
+  <div class="stats" id="crmStats"></div>
+
+  <!-- Quick add -->
+  <div class="quick-add">
+    <input type="text" id="quickName" placeholder="Name / Praxis schnell hinzufügen..." onkeydown="if(event.key==='Enter')quickAdd()">
+    <select id="quickNiche">
+      <option>Physiotherapie</option><option>Psychotherapie</option>
+      <option>Ergotherapie</option><option>Fitnessstudio</option><option>Sonstiges</option>
+    </select>
+    <button onclick="quickAdd()">+ Hinzufügen</button>
+  </div>
+
+  <!-- Filters + sort -->
+  <div class="filter-row" id="filterRow">
+    <span class="sort-label">Sortieren:</span>
+    <select class="sort-select" id="sortBy" onchange="renderCRM()">
+      <option value="date">Nach Datum</option>
+      <option value="name">Nach Name</option>
+      <option value="calls">Nach Anrufen</option>
+      <option value="status">Nach Status</option>
+    </select>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Anruf</th>
+          <th>Name / Praxis</th>
+          <th>Nische</th>
+          <th>Status</th>
+          <th>Anrufe</th>
+          <th>Nächste Aktion</th>
+          <th>Aufgabe</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div id="empty" class="empty" style="display:none">Keine Einträge gefunden.</div>
+  </div>
+
+  <!-- Weekly Summary -->
+  <div class="weekly-summary">
+    <h3>Wochenübersicht</h3>
+    <div class="weekly-grid" id="weeklySummary"></div>
+    <div class="conversion-bar">
+      <div class="conv-label"><span>Conversion Rate (Anrufe → Interessiert)</span><span id="convPct">0%</span></div>
+      <div class="conv-track"><div class="conv-fill" id="convFill" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <div class="sms-box">
+    <strong>SMS Vorlage — nach 2 Anrufen ohne Antwort:</strong>
+    "Hallo, mein Name ist Konrad — ich habe versucht Sie kurz telefonisch zu erreichen. Ich habe eine Demo-Website für Ihre Praxis erstellt und wollte diese unverbindlich zeigen: [LINK]. Falls Sie Interesse haben, melden Sie sich gerne. Liebe Grüße!"
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <h3>Kontakt bearbeiten</h3>
+    <div class="form-row">
+      <div class="form-group"><label>Name / Praxis</label><input type="text" id="e-name"></div>
+      <div class="form-group"><label>Telefon</label><input type="text" id="e-phone"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Nische</label>
+        <select id="e-niche">
+          <option>Physiotherapie</option><option>Psychotherapie</option>
+          <option>Ergotherapie</option><option>Fitnessstudio</option><option>Sonstiges</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Quelle</label>
+        <select id="e-source">
+          <option value="">—</option>
+          <option>Google Maps</option><option>Facebook</option>
+          <option>Instagram</option><option>LinkedIn</option>
+          <option>Empfehlung</option><option>Sonstiges</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeEditModal()">Abbrechen</button>
+      <button class="btn-save" onclick="saveEdit()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- Outcome Modal -->
+<div class="modal-overlay" id="outcomeModal">
+  <div class="modal">
+    <h3 id="outcomeTitle">Ergebnis des Anrufs</h3>
+    <div class="step active" id="step1">
+      <p>Hat jemand abgenommen?</p>
+      <div class="outcome-btns">
+        <button class="outcome-btn" onclick="goStep2()">Ja — jemand hat abgenommen</button>
+        <button class="outcome-btn" onclick="handleNoAnswer()">Nein — keine Antwort</button>
+      </div>
+      <div class="modal-btns"><button class="btn-cancel" onclick="closeOutcomeModal()">Abbrechen</button></div>
+    </div>
+    <div class="step" id="step2">
+      <p>War die Person interessiert?</p>
+      <div class="outcome-btns">
+        <button class="outcome-btn" onclick="goStep3()">Ja — Interesse vorhanden</button>
+        <button class="outcome-btn" onclick="handleNotInterested()">Nein — kein Interesse</button>
+      </div>
+      <div class="modal-btns"><button class="btn-cancel" onclick="closeOutcomeModal()">Abbrechen</button></div>
+    </div>
+    <div class="step" id="step3">
+      <p>Was muss als nächstes getan werden?</p>
+      <div class="form-group"><label>Aufgabe / Nächster Schritt</label><textarea id="o-todo" placeholder="z.B. Demo Website erstellen und per Email schicken..."></textarea></div>
+      <div class="form-group"><label>Bis wann?</label><input type="date" id="o-date"></div>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="closeOutcomeModal()">Abbrechen</button>
+        <button class="btn-save" onclick="handleInterested()">Speichern</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function todayStr() { return new Date().toISOString().split('T')[0]; }
+function tomorrow() { const d=new Date(); d.setDate(d.getDate()+1); return d.toISOString().split('T')[0]; }
+function formatDate(s) { if(!s) return ''; return new Date(s).toLocaleDateString('de-AT',{day:'2-digit',month:'2-digit',year:'2-digit'}); }
+function isUrgent(s) { if(!s) return false; return (new Date(s)-new Date())/(1000*60*60*24)<=1; }
+
+function showPage(e,name) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  e.currentTarget.classList.add('active');
+  if(name==='crm') renderCRM();
+  if(name==='tagesplan') refreshQuote();
+}
+
+// ── TAGESPLAN ──
+const blockDefs=[
+  {tasks:['Script nochmal kurz durchlesen','CRM geöffnet und bereit','Telefon bereit, keine Ablenkungen','20 Anrufe abschließen']},
+  {tasks:['Mittagspause — Handy weglegen','10-15 neue Leads auf Google Maps suchen','Leads in CRM eintragen','Follow-up Emails / SMS aus dem Vormittag senden']},
+  {tasks:['CRM auf aktuellem Stand','Skript anpassen falls nötig','20 Anrufe abschließen','Rückrufe aus Vormittag erledigen']},
+  {tasks:['CRM vollständig aktualisieren','Morgen-Anrufliste vorbereiten (20 Namen)','Offene Emails / SMS senden','Tagesreflexion: Was hat funktioniert?']}
+];
+const quotes=[
+  "Disziplin ist die Brücke zwischen Zielen und Erfolg.",
+  "Du musst nicht perfekt sein. Du musst nur anfangen.",
+  "Kleine Schritte jeden Tag bauen ein Leben auf.",
+  "Niemand der hart arbeitet bereut es am Ende.",
+  "Der einzige Weg nach oben ist durch die Arbeit.",
+  "Mach heute etwas, für das dein zukünftiges Ich dankt.",
+  "Motivation bringt dich an den Start. Gewohnheit bringt dich ans Ziel.",
+  "Wer anfängt hat schon gewonnen.",
+  "Steh auf. Mach es. Ruh dich später aus.",
+  "Der Unterschied zwischen gut und großartig ist Konsistenz.",
+  "Niemand erinnert sich an die Tage. Sie erinnern sich an die Momente.",
+  "Dein Leben beginnt außerhalb deiner Komfortzone.",
+  "Jeder Experte war einmal Anfänger.",
+  "Was heute schwer ist wird morgen normal sein.",
+  "Die Arbeit die du heute vermeidest wird morgen doppelt so schwer.",
+  "Jeder Anruf bringt dich näher zum ersten Kunden.",
+  "Ablehnung ist kein Misserfolg. Kein Anruf ist Misserfolg.",
+  "Konsistenz schlägt Perfektion. Jeden Tag ein bisschen.",
+  "Jedes Nein ist ein Schritt näher zum Ja.",
+  "Volume is the strategy. Pick up the phone."
+];
+function refreshQuote(){
+  refreshQuote();
+}
+
+function freshDayState(){return{date:todayStr(),tasks:{0:[],1:[],2:[],3:[]},amCalls:0,pmCalls:0,notes:{0:'',1:'',2:'',3:''},openBlocks:[true,false,false,false]};}
+let dayState=JSON.parse(localStorage.getItem('konrad_day_v3')||'null')||freshDayState();
+if(dayState.date!==todayStr()){dayState=freshDayState();persistDay();}
+function persistDay(){localStorage.setItem('konrad_day_v3',JSON.stringify(dayState));}
+
+function toggleBlock(i){dayState.openBlocks[i]=!dayState.openBlocks[i];persistDay();renderBlocks();}
+function changeCount(w,d){
+  if(w==='am') dayState.amCalls=Math.max(0,Math.min(20,dayState.amCalls+d));
+  else dayState.pmCalls=Math.max(0,Math.min(20,dayState.pmCalls+d));
+  persistDay();renderCallsTP();renderProgress();
+}
+function setCallCountTP(w,n){
+  const cur=w==='am'?dayState.amCalls:dayState.pmCalls;
+  const val=cur===n?n-1:n;
+  if(w==='am') dayState.amCalls=val; else dayState.pmCalls=val;
+  persistDay();renderCallsTP();renderProgress();
+}
+function toggleTask(bi,ti){
+  if(!dayState.tasks[bi]) dayState.tasks[bi]=[];
+  const arr=dayState.tasks[bi],pos=arr.indexOf(ti);
+  if(pos===-1) arr.push(ti); else arr.splice(pos,1);
+  persistDay();renderTasks();renderProgress();
+}
+function saveNotes(){[0,1,2,3].forEach(i=>{dayState.notes[i]=document.getElementById('note'+i).value;});persistDay();}
+function renderBlocks(){
+  [0,1,2,3].forEach(i=>{
+    const body=document.getElementById('bb'+i),chev=document.getElementById('bc'+i);
+    if(dayState.openBlocks[i]){body.classList.add('open');chev.classList.add('open');}
+    else{body.classList.remove('open');chev.classList.remove('open');}
+  });
+}
+function renderCallsTP(){
+  ['am','pm'].forEach(w=>{
+    const count=w==='am'?dayState.amCalls:dayState.pmCalls;
+    document.getElementById(w+'Count').textContent=count;
+    const grid=document.getElementById(w+'Grid');
+    if(grid) grid.innerHTML=Array.from({length:20},(_,i)=>`<div class="call-dot ${i<count?'filled':''}" onclick="setCallCountTP('${w}',${i+1})"></div>`).join('');
+  });
+  document.getElementById('bp0').textContent=dayState.amCalls+'/20 Anrufe';
+  document.getElementById('bp2').textContent=dayState.pmCalls+'/20 Anrufe';
+  document.getElementById('statAM').textContent=dayState.amCalls;
+  document.getElementById('statPM').textContent=dayState.pmCalls;
+  document.getElementById('statTotal').textContent=dayState.amCalls+dayState.pmCalls;
+}
+function renderTasks(){
+  [0,1,2,3].forEach(bi=>{
+    const container=document.getElementById('tasks'+bi);
+    if(!container) return;
+    const done=dayState.tasks[bi]||[],total=blockDefs[bi].tasks.length;
+    container.innerHTML=blockDefs[bi].tasks.map((t,i)=>`<div class="task"><div class="task-check ${done.includes(i)?'done':''}" onclick="toggleTask(${bi},${i})"></div><div class="task-label ${done.includes(i)?'done':''}">${t}</div></div>`).join('');
+    if(bi===1) document.getElementById('bp1').textContent=done.length+'/'+total;
+    if(bi===3) document.getElementById('bp3').textContent=done.length+'/'+total;
+  });
+}
+function renderProgress(){
+  let totalT=0,doneT=0;
+  [0,1,2,3].forEach(i=>{totalT+=blockDefs[i].tasks.length;doneT+=(dayState.tasks[i]||[]).length;});
+  const pct=Math.round(((doneT+dayState.amCalls+dayState.pmCalls)/(totalT+40))*100);
+  document.getElementById('progressBar').style.width=pct+'%';
+  document.getElementById('progressLabel').textContent=pct+'% des Tages erledigt';
+  document.getElementById('statPct').textContent=pct+'%';
+  document.getElementById('completionMsg').style.display=pct>=100?'block':'none';
+}
+function resetDay(){if(confirm('Tag wirklich zurücksetzen?')){dayState=freshDayState();persistDay();initDay();}}
+function initDay(){
+  const now=new Date();
+  document.getElementById('navDate').textContent=now.toLocaleDateString('de-AT',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  refreshQuote();
+  [0,1,2,3].forEach(i=>{const el=document.getElementById('note'+i);if(el) el.value=dayState.notes[i]||'';});
+  renderBlocks();renderCallsTP();renderTasks();renderProgress();
+}
+
+// ── CRM ──
+const statusMap={
+  new:       {label:'Anrufen',       cls:'badge-new'},
+  callback:  {label:'Rückruf',       cls:'badge-callback'},
+  sms:       {label:'SMS schicken',  cls:'badge-sms'},
+  smssent:   {label:'SMS gesendet',  cls:'badge-smssent'},
+  waiting:   {label:'Wartet auf Antwort', cls:'badge-waiting'},
+  interested:{label:'Interessiert',  cls:'badge-interested'},
+};
+const actionMap={
+  new:       'Anrufen',
+  callback:  'Zurückrufen',
+  sms:       'SMS senden',
+  smssent:   'Auf Antwort warten',
+  waiting:   'Nachfassen falls keine Antwort',
+  interested:'Aufgabe erledigen',
+};
+
+const preloaded=[
+  {id:1, name:'beaktiv',niche:'Fitnessstudio',status:'interested',calls:1,date:'',actionDone:false,todo:'Demo zeigen',todoDate:'',source:'Google Maps'},
+  {id:2, name:'Anna Plehn Physiotherapie',niche:'Physiotherapie',status:'sms',calls:2,date:tomorrow(),actionDone:false,todo:'',todoDate:'',source:'Google Maps'},
+  {id:3, name:'Praxis für Physiotherapie',niche:'Physiotherapie',status:'sms',calls:2,date:tomorrow(),actionDone:false,todo:'',todoDate:'',source:'Google Maps'},
+  {id:5, name:'Physiotherapie Quinz',niche:'Physiotherapie',status:'callback',calls:1,date:tomorrow(),actionDone:false,todo:'',todoDate:'',source:'Google Maps'},
+  {id:6, name:'Praxis für Physiotherapie Stefan Ratheiser',niche:'Physiotherapie',status:'callback',calls:1,date:tomorrow(),actionDone:false,todo:'Do 8:00-13:00 anrufen',todoDate:'',source:'Google Maps'},
+  {id:8, name:'Sarah Scharner - Physio Ärztezentrum Alsberbach',niche:'Physiotherapie',status:'callback',calls:1,date:tomorrow(),actionDone:false,todo:'',todoDate:'',source:'Google Maps'},
+  {id:9, name:'Physiotherapie Dagmar Mayrhofer',niche:'Physiotherapie',status:'callback',calls:1,date:tomorrow(),actionDone:false,todo:'',todoDate:'',source:'Google Maps'},
+  {id:11,name:'Physiotherapie Therese von Roesgen',niche:'Physiotherapie',status:'callback',calls:1,date:tomorrow(),actionDone:false,todo:'',todoDate:'',source:'Google Maps'},
+  {id:12,name:'Psychotherapeutische Praxis Taborstraße',niche:'Psychotherapie',status:'callback',calls:1,date:tomorrow(),actionDone:false,todo:'',todoDate:'',source:'Google Maps'},
+  {id:14,name:'Mag. Dr. Linda M. Furchtlehner',niche:'Psychotherapie',status:'callback',calls:1,date:tomorrow(),actionDone:false,todo:'',todoDate:'',source:'Google Maps'},
+  {id:15,name:'Ingrid Matejka',niche:'Psychotherapie',status:'callback',calls:1,date:tomorrow(),actionDone:false,todo:'',todoDate:'',source:'Google Maps'},
+  {id:17,name:'Physiotherapie Maria Hitzenberger',niche:'Physiotherapie',status:'callback',calls:1,date:tomorrow(),actionDone:false,todo:'',todoDate:'',source:'Google Maps'},
+  {id:18,name:'Physiotherapie Verena Bugram',niche:'Physiotherapie',status:'callback',calls:1,date:tomorrow(),actionDone:false,todo:'',todoDate:'',source:'Google Maps'},
+  {id:19,name:'Psychotherapeutische Praxis Dr. Inge Mühlsteiger',niche:'Psychotherapie',status:'callback',calls:1,date:tomorrow(),actionDone:false,todo:'',todoDate:'',source:'Google Maps'},
+  {id:20,name:'Ergotherapie Alexander Lukavsky MSc.',niche:'Ergotherapie',status:'callback',calls:1,date:tomorrow(),actionDone:false,todo:'',todoDate:'',source:'Google Maps'},
+  {id:21,name:'Psychotherapeutische Praxis Ebenau | Melanie Erker',niche:'Psychotherapie',status:'callback',calls:1,date:tomorrow(),actionDone:false,todo:'',todoDate:'',source:'Google Maps'},
+  {id:22,name:'Therapie Oliver Hochradl',niche:'Psychotherapie',status:'callback',calls:1,date:tomorrow(),actionDone:false,todo:'',todoDate:'',source:'Google Maps'},
+  {id:23,name:'Ergotherapie Theresa Brunnlechner',niche:'Ergotherapie',status:'callback',calls:1,date:tomorrow(),actionDone:false,todo:'',todoDate:'',source:'Google Maps'},
+];
+
+let contacts=JSON.parse(localStorage.getItem('konrad_crm_v8')||'null');
+if(!contacts){contacts=preloaded;persistCRM();}
+let activeFilter='all', currentOutcomeId=null, revenueId=null, editId=null;
+function persistCRM(){localStorage.setItem('konrad_crm_v8',JSON.stringify(contacts));}
+
+function incrementDayCall(){
+  const h=new Date().getHours();
+  if(h<13) dayState.amCalls=Math.min(20,dayState.amCalls+1);
+  else dayState.pmCalls=Math.min(20,dayState.pmCalls+1);
+  persistDay();renderCallsTP();renderProgress();
+}
+
+// Quick add
+function quickAdd(){
+  const name=document.getElementById('quickName').value.trim();
+  if(!name) return;
+  const niche=document.getElementById('quickNiche').value;
+  contacts.push({id:Date.now(),name,phone:'',niche,status:'new',calls:0,date:'',actionDone:false,todo:'',todoDate:'',source:'Google Maps'});
+  persistCRM();
+  document.getElementById('quickName').value='';
+  renderCRM();
+}
+
+// Edit modal
+function openEditModal(id){
+  editId=id;
+  const c=contacts.find(x=>x.id===id);
+  document.getElementById('e-name').value=c.name;
+  document.getElementById('e-phone').value=c.phone||'';
+  document.getElementById('e-niche').value=c.niche;
+  document.getElementById('e-source').value=c.source||'';
+  document.getElementById('editModal').classList.add('open');
+}
+function closeEditModal(){document.getElementById('editModal').classList.remove('open');editId=null;}
+function saveEdit(){
+  contacts=contacts.map(c=>c.id===editId?{...c,name:document.getElementById('e-name').value.trim(),phone:document.getElementById('e-phone').value.trim(),niche:document.getElementById('e-niche').value,source:document.getElementById('e-source').value}:c);
+  persistCRM();closeEditModal();renderCRM();
+}
+
+// Revenue modal
+function openRevenueModal(id){
+  revenueId=id;
+  const c=contacts.find(x=>x.id===id);
+  document.getElementById('revenueSubtitle').textContent=c.name;
+  document.getElementById('r-amount').value=c.revenue||'';
+  document.getElementById('revenueModal').classList.add('open');
+}
+function closeRevenueModal(){document.getElementById('revenueModal').classList.remove('open');revenueId=null;}
+function saveRevenue(){
+  const amount=parseFloat(document.getElementById('r-amount').value)||0;
+  
+  persistCRM();closeRevenueModal();renderCRM();
+}
+
+// Outcome modal
+function openOutcomeModal(id){
+  currentOutcomeId=id;
+  const c=contacts.find(x=>x.id===id);
+  document.getElementById('outcomeTitle').textContent=c.name;
+  document.getElementById('o-todo').value='';
+  document.getElementById('o-date').value=tomorrow();
+  showStep('step1');
+  document.getElementById('outcomeModal').classList.add('open');
+}
+function closeOutcomeModal(){document.getElementById('outcomeModal').classList.remove('open');currentOutcomeId=null;}
+function showStep(id){['step1','step2','step3'].forEach(s=>document.getElementById(s).classList.remove('active'));document.getElementById(id).classList.add('active');}
+function goStep2(){showStep('step2');}
+function goStep3(){showStep('step3');}
+
+function handleNoAnswer(){
+  const c=contacts.find(x=>x.id===currentOutcomeId);
+  const newCalls=(c.calls||0)+1;
+  const newStatus=newCalls>=2?'sms':'callback';
+  contacts=contacts.map(x=>x.id===currentOutcomeId?{...x,calls:newCalls,status:newStatus,date:tomorrow(),actionDone:false}:x);
+  persistCRM();incrementDayCall();closeOutcomeModal();renderCRM();
+}
+function handleNotInterested(){
+  contacts=contacts.filter(x=>x.id!==currentOutcomeId);
+  persistCRM();incrementDayCall();closeOutcomeModal();renderCRM();
+}
+function handleInterested(){
+  const todo=document.getElementById('o-todo').value.trim();
+  const todoDate=document.getElementById('o-date').value;
+  contacts=contacts.map(x=>x.id===currentOutcomeId?{...x,calls:(x.calls||0)+1,status:'interested',date:todoDate,actionDone:false,todo,todoDate}:x);
+  persistCRM();incrementDayCall();closeOutcomeModal();renderCRM();
+}
+
+function toggleAction(id){
+  const c=contacts.find(x=>x.id===id);
+  const newDone=!c.actionDone;
+  // If SMS action ticked → move to smssent. If waiting action ticked → stays waiting.
+  let newStatus=c.status;
+  if(newDone && c.status==='sms') newStatus='smssent';
+  if(newDone && c.status==='interested') newStatus='waiting';
+  contacts=contacts.map(x=>x.id===id?{...x,actionDone:newDone,status:newStatus}:x);
+  persistCRM();renderCRM();
+}
+
+function deleteContact(id){if(confirm('Kontakt löschen?')){contacts=contacts.filter(c=>c.id!==id);persistCRM();renderCRM();}}
+
+function renderCRM(){
+  const search=(document.getElementById('search')||{value:''}).value.toLowerCase();
+  const sortBy=document.getElementById('sortBy').value;
+
+  let filtered=[...contacts];
+  if(activeFilter!=='all') filtered=filtered.filter(c=>c.status===activeFilter);
+
+  // Sort
+  const statusOrder={callback:0,sms:1,smssent:2,waiting:3,interested:4};
+  filtered.sort((a,b)=>{
+    if(sortBy==='date'){
+      if(!a.date && !b.date) return 0;
+      if(!a.date) return 1;
+      if(!b.date) return -1;
+      return new Date(a.date)-new Date(b.date);
+    }
+    if(sortBy==='name') return a.name.localeCompare(b.name);
+    if(sortBy==='calls') return (b.calls||0)-(a.calls||0);
+    if(sortBy==='status') return (statusOrder[a.status]||0)-(statusOrder[b.status]||0);
+    return 0;
+  });
+
+  // Stats
+  const counts={};
+  contacts.forEach(c=>counts[c.status]=(counts[c.status]||0)+1);
+  document.getElementById('crmStats').innerHTML=`
+    <div class="stat"><div class="stat-num">${contacts.length}</div><div class="stat-label">Gesamt</div></div>
+    <div class="stat"><div class="stat-num">${counts.callback||0}</div><div class="stat-label">Rückruf</div></div>
+    <div class="stat"><div class="stat-num">${(counts.sms||0)+(counts.smssent||0)}</div><div class="stat-label">SMS</div></div>
+    <div class="stat"><div class="stat-num">${(counts.interested||0)+(counts.waiting||0)}</div><div class="stat-label">Interessiert</div></div>
+    <div class="stat"><div class="stat-num">${counts.won||0}</div><div class="stat-label">Gewonnen</div></div>  `;
+
+  // Filter buttons
+  const filters=[
+    {key:'all',label:'Alle'},
+    {key:'new',label:'Anrufen'},
+    {key:'callback',label:'Rückruf'},
+    {key:'sms',label:'SMS schicken'},
+    {key:'smssent',label:'SMS gesendet'},
+    {key:'waiting',label:'Wartet auf Antwort'},
+    {key:'interested',label:'Interessiert'},
+  ];
+  const filterRow=document.getElementById('filterRow');
+  const sortHtml=filterRow.querySelector('.sort-label')?filterRow.innerHTML.split('<span')[0]:'';
+  filterRow.innerHTML=filters.map(f=>`<button class="filter-btn ${activeFilter===f.key?'active':''}" onclick="setFilter('${f.key}')">${f.label}</button>`).join('')+
+    `<span class="sort-label" style="margin-left:auto">Sortieren:</span><select class="sort-select" id="sortBy" onchange="renderCRM()"><option value="date" ${sortBy==='date'?'selected':''}>Nach Datum</option><option value="name" ${sortBy==='name'?'selected':''}>Nach Name</option><option value="calls" ${sortBy==='calls'?'selected':''}>Nach Anrufen</option><option value="status" ${sortBy==='status'?'selected':''}>Nach Status</option></select>`;
+
+  // Weekly summary
+  const totalCalls=contacts.reduce((s,c)=>s+(c.calls||0),0);
+  const interestedCount=(counts.interested||0)+(counts.waiting||0)+(counts.won||0);
+  const convRate=totalCalls>0?Math.round((interestedCount/totalCalls)*100):0;
+  const sourceCount={};
+  contacts.forEach(c=>{if(c.source) sourceCount[c.source]=(sourceCount[c.source]||0)+1;});
+  const topSource=Object.entries(sourceCount).sort((a,b)=>b[1]-a[1])[0];
+  document.getElementById('weeklySummary').innerHTML=`
+    <div class="weekly-stat"><div class="weekly-num">${totalCalls}</div><div class="weekly-label">Anrufe gesamt</div></div>
+    <div class="weekly-stat"><div class="weekly-num">${interestedCount}</div><div class="weekly-label">Interessiert</div></div>
+    <div class="weekly-stat"><div class="weekly-num">${topSource?topSource[0]:'—'}</div><div class="weekly-label">Top Quelle</div></div>
+  `;
+  document.getElementById('convPct').textContent=convRate+'%';
+  document.getElementById('convFill').style.width=convRate+'%';
+
+  const tbody=document.getElementById('tbody');
+  const empty=document.getElementById('empty');
+  if(filtered.length===0){tbody.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+
+  tbody.innerHTML=filtered.map(c=>{
+    const s=statusMap[c.status]||{label:c.status,cls:''};
+    const action=actionMap[c.status]||'—';
+    const hasAction=action!=='—';
+    const urgent=c.date&&isUrgent(c.date);
+    const dateStr=c.date?formatDate(c.date):'';
+    const canCall=['new','callback'].includes(c.status);
+    const callsNum=c.calls||0;
+    const callsPillClass=callsNum>=2?'two':callsNum===1?'one':'';
+    const rowClass=urgent&&c.status!=='won'?'urgent-row':'';
+    return `
+      <tr class="${rowClass}">
+        <td style="text-align:center">
+          ${canCall?`<div class="call-tick" onclick="openOutcomeModal(${c.id})" title="Anruf erfassen" style="cursor:pointer;border:1.5px solid #d0d0d0;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;background:white;"></div>`:`<span style="color:#ccc;font-size:13px">—</span>`}
+        </td>
+        <td><strong>${c.name}</strong>${c.phone?`<br><span style="font-size:11px;color:#888">${c.phone}</span>`:''}${c.source?`<br><span style="font-size:10px;color:#aaa">${c.source}</span>`:''}</td>
+        <td style="color:#888;font-size:12px">${c.niche}</td>
+        <td><span class="badge ${s.cls}">${s.label}</span></td>
+        <td style="text-align:center"><span class="calls-pill ${callsPillClass}">${callsNum}x</span></td>
+        <td>${hasAction?`<div class="action-cell"><div class="tick-btn ${c.actionDone?'ticked':''}" onclick="toggleAction(${c.id})"></div><span class="action-text ${c.actionDone?'ticked':''}">${action}</span>${dateStr?`<span class="action-date ${urgent?'urgent':''}">${dateStr}</span>`:''}</div>`:'<span style="color:#ccc;font-size:12px">—</span>'}</td>
+        <td class="todo-cell">${c.todo?`<div>${c.todo}</div>${c.todoDate?`<div class="todo-date ${isUrgent(c.todoDate)?'urgent':''}">bis ${formatDate(c.todoDate)}</div>`:'`'}` :'<span style="color:#ccc">—</span>'}</td>
+        <td style="white-space:nowrap">
+          <button class="btn-icon" onclick="openEditModal(${c.id})">✏️</button>
+          <button class="btn-icon btn-del" onclick="deleteContact(${c.id})">✕</button>
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+function setFilter(key){activeFilter=key;renderCRM();}
+document.getElementById('editModal').addEventListener('click',function(e){if(e.target===this)closeEditModal();});
+document.getElementById('revenueModal').addEventListener('click',function(e){if(e.target===this)closeRevenueModal();});
+document.getElementById('outcomeModal').addEventListener('click',function(e){if(e.target===this)closeOutcomeModal();});
+
+initDay();
+renderCRM();
+</script>
+</body>
+</html>
