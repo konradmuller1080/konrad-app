@@ -96,7 +96,6 @@ tr:hover td { background: #fafafa; }
 tr.urgent-row td { background: #fffbf0; }
 
 .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; white-space: nowrap; }
-.badge-new        { background: #e8f0fe; color: #1a4aad; }
 .badge-callback  { background: #fff3cd; color: #856404; }
 .badge-sms       { background: #fde8d8; color: #8b3a0f; }
 .badge-smssent   { background: #e2d9f3; color: #4a235a; }
@@ -512,7 +511,6 @@ function initDay(){
 
 // ── CRM ──
 const statusMap={
-  new:       {label:'Anrufen',       cls:'badge-new'},
   callback:  {label:'Rückruf',       cls:'badge-callback'},
   sms:       {label:'SMS schicken',  cls:'badge-sms'},
   smssent:   {label:'SMS gesendet',  cls:'badge-smssent'},
@@ -520,7 +518,6 @@ const statusMap={
   interested:{label:'Interessiert',  cls:'badge-interested'},
 };
 const actionMap={
-  new:       'Anrufen',
   callback:  'Zurückrufen',
   sms:       'SMS senden',
   smssent:   'Auf Antwort warten',
@@ -566,7 +563,7 @@ function quickAdd(){
   const name=document.getElementById('quickName').value.trim();
   if(!name) return;
   const niche=document.getElementById('quickNiche').value;
-  contacts.push({id:Date.now(),name,phone:'',niche,status:'new',calls:0,date:'',actionDone:false,todo:'',todoDate:'',source:'Google Maps'});
+  contacts.push({id:Date.now(),name,phone:'',niche,status:'callback',calls:0,date:tomorrow(),actionDone:false,todo:'',todoDate:'',source:'Google Maps'});
   persistCRM();
   document.getElementById('quickName').value='';
   renderCRM();
@@ -684,7 +681,6 @@ function renderCRM(){
   // Filter buttons
   const filters=[
     {key:'all',label:'Alle'},
-    {key:'new',label:'Anrufen'},
     {key:'callback',label:'Rückruf'},
     {key:'sms',label:'SMS schicken'},
     {key:'smssent',label:'SMS gesendet'},
@@ -722,7 +718,7 @@ function renderCRM(){
     const hasAction=action!=='—';
     const urgent=c.date&&isUrgent(c.date);
     const dateStr=c.date?formatDate(c.date):'';
-    const canCall=['new','callback'].includes(c.status);
+    const canCall=c.status==='callback';
     const callsNum=c.calls||0;
     const callsPillClass=callsNum>=2?'two':callsNum===1?'one':'';
     const rowClass=urgent&&c.status!=='won'?'urgent-row':'';
