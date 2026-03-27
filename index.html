@@ -300,6 +300,7 @@ tr.urgent-row td { background: #fffbf0; }
           <th>Anrufe</th>
           <th>Nächste Aktion</th>
           <th>Aufgabe</th>
+          <th>Notizen</th>
           <th></th>
         </tr>
       </thead>
@@ -389,6 +390,22 @@ tr.urgent-row td { background: #fffbf0; }
   </div>
 </div>
 
+<!-- Notes Modal -->
+<div class="modal-overlay" id="notesModal">
+  <div class="modal">
+    <h3 id="notesTitle">Notizen</h3>
+    <div class="subtitle" id="notesSubtitle"></div>
+    <div class="form-group">
+      <label>Notizen zu dieser Praxis / diesem Kontakt</label>
+      <textarea id="notesText" rows="6" placeholder="z.B. Sprechzeiten, Gesprächsnotizen, Besonderheiten..."></textarea>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeNotesModal()">Abbrechen</button>
+      <button class="btn-save" onclick="saveNotesCRM()">Speichern</button>
+    </div>
+  </div>
+</div>
+
 <script>
 function todayStr() { return new Date().toISOString().split('T')[0]; }
 function tomorrow() { const d=new Date(); d.setDate(d.getDate()+1); return d.toISOString().split('T')[0]; }
@@ -434,7 +451,9 @@ const quotes=[
   "Volume is the strategy. Pick up the phone."
 ];
 function refreshQuote(){
-  refreshQuote();
+  const q=quotes[Math.floor(Math.random()*quotes.length)];
+  const el=document.getElementById('motivator');
+  if(el) el.textContent=q;
 }
 
 function freshDayState(){return{date:todayStr(),tasks:{0:[],1:[],2:[],3:[]},amCalls:0,pmCalls:0,notes:{0:'',1:'',2:'',3:''},openBlocks:[true,false,false,false]};}
@@ -721,18 +740,25 @@ function renderCRM(){
     const canCall=c.status==='callback';
     const callsNum=c.calls||0;
     const callsPillClass=callsNum>=2?'two':callsNum===1?'one':'';
+    const callLabel=callsNum===0?'Anrufen':'Rückrufen';
     const rowClass=urgent&&c.status!=='won'?'urgent-row':'';
     return `
       <tr class="${rowClass}">
         <td style="text-align:center">
-          ${canCall?`<div class="call-tick" onclick="openOutcomeModal(${c.id})" title="Anruf erfassen" style="cursor:pointer;border:1.5px solid #d0d0d0;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;background:white;"></div>`:`<span style="color:#ccc;font-size:13px">—</span>`}
+          ${canCall?`<button onclick="openOutcomeModal(${c.id})" style="padding:4px 10px;border-radius:20px;border:1.5px solid ${callsNum===0?'#4a9e6b':'#e0a800'};background:${callsNum===0?'#f0f7f3':'#fffbf0'};color:${callsNum===0?'#2d6a4a':'#856404'};font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;font-family:inherit;">📞 ${callLabel}</button>`:`<span style="color:#ccc;font-size:13px">—</span>`}
         </td>
         <td><strong>${c.name}</strong>${c.phone?`<br><span style="font-size:11px;color:#888">${c.phone}</span>`:''}${c.source?`<br><span style="font-size:10px;color:#aaa">${c.source}</span>`:''}</td>
         <td style="color:#888;font-size:12px">${c.niche}</td>
         <td><span class="badge ${s.cls}">${s.label}</span></td>
         <td style="text-align:center"><span class="calls-pill ${callsPillClass}">${callsNum}x</span></td>
         <td>${hasAction?`<div class="action-cell"><div class="tick-btn ${c.actionDone?'ticked':''}" onclick="toggleAction(${c.id})"></div><span class="action-text ${c.actionDone?'ticked':''}">${action}</span>${dateStr?`<span class="action-date ${urgent?'urgent':''}">${dateStr}</span>`:''}</div>`:'<span style="color:#ccc;font-size:12px">—</span>'}</td>
-        <td class="todo-cell">${c.todo?`<div>${c.todo}</div>${c.todoDate?`<div class="todo-date ${isUrgent(c.todoDate)?'urgent':''}">bis ${formatDate(c.todoDate)}</div>`:'`'}` :'<span style="color:#ccc">—</span>'}</td>
+        <td class="todo-cell">${c.todo?`<div>${c.todo}</div>${c.todoDate?`<div class="todo-date ${isUrgent(c.todoDate)?'urgent':''}">bis ${formatDate(c.todoDate)}</div>`:''}`:'<span style="color:#ccc">—</span>'}</td>
+        <td style="max-width:160px">
+          <div style="display:flex;align-items:center;gap:6px;">
+            ${c.notes?`<span style="font-size:11px;color:#555;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px;" title="${c.notes.replace(/"/g,'&quot;')}">${c.notes}</span>`:'<span style="color:#ccc;font-size:12px">—</span>'}
+            <button class="btn-icon" onclick="openNotesModal(${c.id})" title="Notizen bearbeiten" style="flex-shrink:0">📝</button>
+          </div>
+        </td>
         <td style="white-space:nowrap">
           <button class="btn-icon" onclick="openEditModal(${c.id})">✏️</button>
           <button class="btn-icon btn-del" onclick="deleteContact(${c.id})">✕</button>
@@ -743,8 +769,24 @@ function renderCRM(){
 
 function setFilter(key){activeFilter=key;renderCRM();}
 document.getElementById('editModal').addEventListener('click',function(e){if(e.target===this)closeEditModal();});
-document.getElementById('revenueModal').addEventListener('click',function(e){if(e.target===this)closeRevenueModal();});
 document.getElementById('outcomeModal').addEventListener('click',function(e){if(e.target===this)closeOutcomeModal();});
+
+let notesId=null;
+function openNotesModal(id){
+  notesId=id;
+  const c=contacts.find(x=>x.id===id);
+  document.getElementById('notesTitle').textContent='Notizen';
+  document.getElementById('notesSubtitle').textContent=c.name;
+  document.getElementById('notesText').value=c.notes||'';
+  document.getElementById('notesModal').classList.add('open');
+}
+function closeNotesModal(){document.getElementById('notesModal').classList.remove('open');notesId=null;}
+function saveNotesCRM(){
+  const val=document.getElementById('notesText').value.trim();
+  contacts=contacts.map(c=>c.id===notesId?{...c,notes:val}:c);
+  persistCRM();closeNotesModal();renderCRM();
+}
+document.getElementById('notesModal').addEventListener('click',function(e){if(e.target===this)closeNotesModal();});
 
 initDay();
 renderCRM();
